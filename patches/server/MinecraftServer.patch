@@ -1,0 +1,50 @@
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -230,7 +230,7 @@
+         thread.setUncaughtExceptionHandler((thread1, throwable) -> {
+             MinecraftServer.LOGGER.error(throwable);
+         });
+-        S s0 = (MinecraftServer) function.apply(thread);
++        S s0 = function.apply(thread); // Helium - decompile error
+ 
+         atomicreference.set(s0);
+         thread.start();
+@@ -954,7 +954,7 @@
+     }
+ 
+     public String getServerModName() {
+-        return "vanilla";
++        return "vanilla"; // Helium
+     }
+ 
+     public CrashReport fillReport(CrashReport crashreport) {
+@@ -1307,13 +1307,13 @@
+ 
+     public CompletableFuture<Void> reloadResources(Collection<String> collection) {
+         CompletableFuture<Void> completablefuture = CompletableFuture.supplyAsync(() -> {
+-            Stream stream = collection.stream();
++            Stream<String> stream = collection.stream(); // Helium - decompile error
+             PackRepository packrepository = this.packRepository;
+ 
+             this.packRepository.getClass();
+             return (ImmutableList) stream.map(packrepository::getPack).filter(Objects::nonNull).map(Pack::open).collect(ImmutableList.toImmutableList());
+         }, this).thenCompose((immutablelist) -> {
+-            return ServerResources.loadResources(immutablelist, this.isDedicatedServer() ? Commands.CommandSelection.DEDICATED : Commands.CommandSelection.INTEGRATED, this.getFunctionCompilationLevel(), this.executor, this);
++            return (CompletableFuture<ServerResources>) ServerResources.loadResources(immutablelist, this.isDedicatedServer() ? Commands.CommandSelection.DEDICATED : Commands.CommandSelection.INTEGRATED, this.getFunctionCompilationLevel(), this.executor, this); // Helium - decompile error
+         }).thenAcceptAsync((serverresources) -> {
+             this.resources.close();
+             this.resources = serverresources;
+@@ -1736,6 +1736,7 @@
+         return null;
+     }
+ 
++    /* // Helium start - decompile error
+     public void doRunTask(Runnable runnable) {
+         this.doRunTask((TickTask) runnable);
+     }
+@@ -1747,4 +1748,5 @@
+     public Runnable wrapRunnable(Runnable runnable) {
+         return this.wrapRunnable(runnable);
+     }
++     */ // Helium end - decompile error
+ }

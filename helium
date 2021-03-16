@@ -1,0 +1,116 @@
+#!/bin/bash
+
+# resolve shell-specifics
+case "$(echo "$SHELL" | sed -E 's|/usr(/local)?||g')" in
+    "/bin/zsh")
+        RCPATH="$HOME/.zshrc"
+        SOURCE="${BASH_SOURCE[0]:-${(%):-%N}}"
+    ;;
+    *)
+        RCPATH="$HOME/.bashrc"
+        if [[ -f "$HOME/.bash_aliases" ]]; then
+            RCPATH="$HOME/.bash_aliases"
+        fi
+        SOURCE="${BASH_SOURCE[0]}"
+    ;;
+esac
+
+# get base dir regardless of execution location
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+    DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+SOURCE=$([[ "$SOURCE" = /* ]] && echo "$SOURCE" || echo "$PWD/${SOURCE#./}")
+basedir=$(dirname "$SOURCE")
+
+failed=0
+
+########
+# Helium #
+########
+
+mcVersion=$(cat ".mcversion")
+
+showHelp () {
+    echo "This tool provides a variety of commands to manage a Helium development environment."
+    echo ""
+    echo "Usage: helium [command]"
+    echo ""
+    echo "Commands:"
+    echo ""
+    echo "  c, clean                | Clean the repository."
+    echo "  s, setup                | Setup the repository. (Downloads, maps, decompiles and patches the MC Server)"
+    echo "  p, patch                | Apply all Helium patches. (Required a set up repository)"
+    echo "  rb, rebuild             | Create/update patches base on your current project source."
+    echo "  jar                     | Create a distributable server jar for Helium."
+    # echo "  switchVersion <version> | Switch the Minecraft version you are targeting"
+    echo ""
+    echo "Selected version: $mcVersion"
+    echo ""
+}
+
+cleanRepository() {
+    printf "\r%-60s" "Removing: ./server/src/main/java/net"
+    rm -rf ./server/src/main/java/net
+
+    printf "\r%-60s" "Cleaned repository!"
+}
+
+setupRepository() {
+    (
+        tools/scripts/downloadMinecraftServer.sh || exit 1
+        tools/scripts/decompile.sh || exit 1
+		tools/scripts/applyPatches.sh || exit 1
+
+        echo ""
+        echo "Set up!"
+        echo ""
+    ) || failed=1
+}
+
+applyPatches() {
+    (
+        tools/scripts/applyPatches.sh || exit 1
+
+        echo ""
+        echo "Patched!"
+        echo ""
+    ) || failed=1
+}
+
+rebuildPatches() {
+    (
+        tools/scripts/rebuildPatches.sh || exit 1
+
+        echo ""
+        echo "Build Patched!"
+        echo ""
+    ) || failed=1
+}
+
+buildJar() {
+    (
+        mvn package || exit 1
+        tools/scripts/buildJar.sh || exit 1
+
+        echo ""
+        echo "Built Jar! (helium-$mcVersion.jar)"
+        echo ""
+    ) || failed=1
+}
+
+case "$1" in
+    "c" | "clean") cleanRepository ;;
+    "s" | "setup") setupRepository ;;
+    "p" | "patch") applyPatches ;;
+    "rb" | "rebuild") rebuildPatches ;;
+    "jar") buildJar ;;
+    *) showHelp ;;
+esac
+
+unset RCPATH
+unset SOURCE
+unset basedir
+
+exit $failed
